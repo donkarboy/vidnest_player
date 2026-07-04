@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stream Player</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.7/hls.min.js"></script>
+<style>
+  :root {
+    --bg:#0a0a0f; --surface:#111118; --surface2:#18181f; --border:#1e1e2e;
+    --accent:#6c63ff; --accent2:#a78bfa; --text:#e2e8f0; --muted:#64748b;
+    --ok:#4ade80; --err:#f87171; --warn:#fb923c;
+    --tv:#f59e42; --mono:'JetBrains Mono','Fira Code',monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;}
+  body::before{content:'';position:fixed;inset:0;
+    background-image:linear-gradient(rgba(108,99,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(108,99,255,.025) 1px,transparent 1px);
+    background-size:40px 40px;pointer-events:none;z-index:0;}
+
+  /* ── Header ── */
+  header{position:relative;z-index:1;padding:13px 20px;border-bottom:1px solid var(--border);
+    display:flex;align-items:center;gap:10px;}
+  .logo-dot{width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,#6c63ff,#a78bfa);
+    display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;}
+  header h1{font-size:.95rem;font-weight:700;letter-spacing:.3px;color:var(--accent2);}
+  #hdr-status{font-size:.7rem;color:var(--muted);margin-left:auto;}
+
+  /* ── Layout ── */
+  .wrap{position:relative;z-index:1;display:grid;grid-template-columns:1fr 340px;height:calc(100vh - 51px);}
+  @media(max-width:880px){.wrap{grid-template-columns:1fr;grid-template-rows:auto 1fr;}}
+
+  /* ── Player side ── */
+  .player-side{display:flex;flex-direction:column;padding:14px;gap:10px;overflow-y:auto;}
+
+  .url-bar{display:flex;gap:6px;}
+  .url-bar input{flex:1;background:var(--surface);border:1px solid var(--border);color:var(--text);
+    padding:9px 12px;border-radius:8px;font-size:.8rem;font-family:var(--mono);outline:none;}
+  .url-bar input:focus{border-color:var(--accent);}
+  .url-bar select{background:var(--surface);border:1px solid var(--border);color:var(--text);
+    padding:9px 7px;border-radius:8px;font-size:.78rem;outline:none;cursor:pointer;}
+  .url-bar button{background:var(--accent);color:#fff;border:none;border-radius:8px;
+    padding:9px 15px;font-size:.8rem;font-weight:600;cursor:pointer;white-space:nowrap;}
+  .url-bar button:hover{opacity:.88;}
+
+  /* Advanced headers */
+  .adv-toggle{font-size:.7rem;color:var(--muted);cursor:pointer;user-select:none;
+    display:flex;align-items:center;gap:4px;width:fit-content;}
+  .adv-toggle:hover{color:var(--accent2);}
+  .adv-toggle .arr{transition:transform .2s;display:inline-block;}
+  .adv-toggle.open .arr{transform:rotate(90deg);}
+  .adv-section{display:none;background:var(--surface);border:1px solid var(--border);
+    border-radius:8px;padding:10px 12px;flex-direction:column;gap:7px;}
+  .adv-section.visible{display:flex;}
+  .adv-row{display:flex;align-items:center;gap:8px;}
+  .adv-row label{font-size:.7rem;color:var(--muted);width:52px;flex-shrink:0;}
+  .adv-row input{flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);
+    padding:6px 9px;border-radius:6px;font-size:.76rem;font-family:var(--mono);outline:none;}
+  .adv-row input:focus{border-color:var(--accent);}
+  .adv-note{font-size:.65rem;color:var(--muted);}
+
+  /* Media wrap */
+  .media-wrap{position:relative;background:#000;border-radius:12px;overflow:hidden;aspect-ratio:16/9;width:100%;flex-shrink:0;}
+  video{width:100%;height:100%;display:block;}
+  #iframe-player{width:100%;height:100%;border:none;display:none;background:#000;}
+  .video-overlay{position:absolute;inset:0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:10px;pointer-events:none;background:rgba(0,0,0,.55);}
+  .video-overlay.hidden{display:none;}
+  .spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--accent);
+    border-radius:50%;animation:spin .7s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .overlay-msg{font-size:.78rem;color:var(--muted);text-align:center;padding:0 16px;}
+
+  .status-bar{font-size:.7rem;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+  .dot{width:6px;height:6px;border-radius:50%;display:inline-block;margin-right:3px;}
+  .dot.ok{background:var(--ok);}.dot.err{background:var(--err);}.dot.warn{background:var(--warn);}
+  .mbadge{font-size:.6rem;font-weight:700;border-radius:4px;padding:2px 6px;}
+  .mb-hls{background:#2a1f0a;color:var(--warn);}.mb-mp4{background:#0a2a14;color:var(--ok);}
+  .mb-embed{background:#0a1f2a;color:#38bdf8;}.mb-txt{background:#1a1535;color:var(--accent2);}
+  .mb-dash{background:#1a0a2a;color:#c084fc;}.mb-playlist{background:#1a1535;color:var(--accent2);}
+
+  /* ── Source panel ── */
+  .source-panel{border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+  @media(max-width:880px){.source-panel{border-left:none;border-top:1px solid var(--border);max-height:44vh;}}
+
+  .panel-head{padding:11px 13px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:7px;flex-shrink:0;}
+  .panel-head h2{font-size:.8rem;font-weight:700;}
+  .ph-cnt{margin-left:auto;background:var(--accent);color:#fff;font-size:.6rem;font-weight:700;border-radius:20px;padding:2px 8px;}
+
+  /* Source tabs */
+  .src-tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0;}
+  .src-tab{flex:1;padding:9px 4px;font-size:.72rem;font-weight:600;text-align:center;
+    cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;transition:all .15s;}
+  .src-tab:hover{color:var(--text);}
+  .src-tab.active{color:var(--accent2);border-bottom-color:var(--accent);}
+  .src-tab.active-tv{color:var(--tv);border-bottom-color:var(--tv);}
+
+  /* Fetch bars */
+  .fetch-pane{display:none;flex-direction:column;flex-shrink:0;}
+  .fetch-pane.visible{display:flex;}
+  .fetch-inner{padding:10px 11px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:6px;}
+  .fetch-row{display:flex;gap:5px;}
+  .fetch-row input{flex:1;background:var(--surface);border:1px solid var(--border);color:var(--text);
+    padding:7px 8px;border-radius:7px;font-size:.76rem;outline:none;}
+  .fetch-row input:focus{border-color:var(--accent);}
+  .fetch-row select{background:var(--surface);border:1px solid var(--border);color:var(--text);
+    padding:7px 6px;border-radius:7px;font-size:.75rem;outline:none;}
+  .fetch-row button{border:none;border-radius:7px;padding:7px 12px;font-size:.75rem;font-weight:600;cursor:pointer;color:#fff;}
+  .fetch-row button.btn-movie{background:var(--accent);}
+  .fetch-row button.btn-tv{background:var(--tv);color:#1a1200;}
+  .fetch-row button:hover{opacity:.88;}
+  .ep-row{display:flex;gap:5px;}
+  .ep-row input{flex:1;background:var(--surface);border:1px solid var(--border);color:var(--text);
+    padding:6px 8px;border-radius:7px;font-size:.74rem;outline:none;}
+  .type-toggle{display:flex;gap:4px;}
+  .type-btn{flex:1;padding:6px 4px;border-radius:6px;border:1px solid var(--border);
+    font-size:.7rem;font-weight:600;cursor:pointer;transition:all .15s;background:var(--surface2);color:var(--muted);}
+  .type-btn.active-movie{background:var(--accent);color:#fff;border-color:var(--accent);}
+  .type-btn.active-tv{background:var(--tv);color:#1a1200;border-color:var(--tv);}
+
+  .fetch-status{font-size:.68rem;padding:5px 11px;color:var(--muted);min-height:20px;flex-shrink:0;}
+  .fetch-status.ok{color:var(--ok);}.fetch-status.err{color:var(--err);}.fetch-status.warn{color:var(--warn);}
+
+  /* Stream list */
+  .stream-list{flex:1;overflow-y:auto;padding:7px 5px;display:flex;flex-direction:column;gap:3px;}
+  .stream-list:empty::after{content:"No streams loaded.";display:block;text-align:center;
+    color:var(--muted);font-size:.74rem;padding:26px 0;}
+
+  .server-group{margin-bottom:4px;}
+  .server-label{font-size:.63rem;font-weight:700;color:var(--muted);text-transform:uppercase;
+    letter-spacing:1px;padding:5px 7px 3px;}
+
+  .stream-item{display:flex;align-items:center;gap:5px;padding:6px 7px;border-radius:7px;
+    cursor:pointer;border:1px solid transparent;transition:all .12s;}
+  .stream-item:hover{background:var(--surface);border-color:var(--border);}
+  .stream-item.active{background:#1a1535;border-color:var(--accent);}
+  .type-tag{font-size:.58rem;font-weight:700;border-radius:4px;padding:2px 5px;white-space:nowrap;flex-shrink:0;}
+  .tag-hls{background:#2a1f0a;color:var(--warn);}.tag-mp4{background:#0a2a14;color:var(--ok);}
+  .tag-dash{background:#1a0a2a;color:#c084fc;}.tag-txt{background:#1a1535;color:var(--accent2);}
+  .tag-embed{background:#0a1f2a;color:#38bdf8;}.tag-playlist{background:#1a1535;color:var(--accent2);}
+  .tag-mirror{background:var(--surface2);color:var(--muted);}
+  .stream-url-text{font-size:.63rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0;}
+  .stream-item.active .stream-url-text{color:var(--accent2);}
+  .play-icon{flex-shrink:0;color:var(--accent);font-size:.72rem;opacity:0;}
+  .stream-item:hover .play-icon,.stream-item.active .play-icon{opacity:1;}
+  .copy-icon{flex-shrink:0;font-size:.65rem;color:var(--muted);opacity:0;cursor:pointer;padding:2px 4px;border-radius:3px;}
+  .stream-item:hover .copy-icon{opacity:1;}
+  .copy-icon:hover{color:var(--ok);}
+
+  /* Movie info card */
+  .movie-meta{padding:10px 12px;border-bottom:1px solid var(--border);display:none;flex-direction:column;gap:5px;flex-shrink:0;}
+  .movie-meta.visible{display:flex;}
+  .movie-meta-title{font-size:.78rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .movie-meta-row{display:flex;gap:5px;flex-wrap:wrap;}
+  .meta-badge{font-size:.6rem;padding:2px 7px;border-radius:4px;font-weight:600;}
+  .mb-accent{background:rgba(108,99,255,.15);color:#a78bfa;border:1px solid rgba(108,99,255,.3);}
+  .mb-tv{background:rgba(245,158,66,.12);color:var(--tv);border:1px solid rgba(245,158,66,.3);}
+  .mb-gray{background:var(--surface2);color:var(--muted);border:1px solid var(--border);}
+
+  ::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-track{background:transparent;}
+  ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-dot">▶</div>
+  <h1>Stream Player</h1>
+  <span id="hdr-status">idle</span>
+</header>
+
+<div class="wrap">
+
+  <!-- ── Left: player ── -->
+  <div class="player-side">
+    <div class="url-bar">
+      <input id="manualUrl" placeholder="Paste m3u8 / mp4 / .txt / embed URL…" />
+      <select id="manualType" title="Force type">
+        <option value="auto">Auto</option>
+        <option value="hls">HLS</option>
+        <option value="mp4">MP4</option>
+        <option value="dash">DASH</option>
+        <option value="txt">TXT</option>
+        <option value="embed">Embed</option>
+      </select>
+      <button onclick="playManual()">▶ Play</button>
+    </div>
+
+    <div>
+      <div class="adv-toggle" id="advToggle" onclick="toggleAdv()">
+        <span class="arr">▶</span> Advanced headers
+      </div>
+      <div class="adv-section" id="advSection">
+        <div class="adv-row">
+          <label>Referer</label>
+          <input id="referer" type="url" placeholder="https://example.com/" />
+        </div>
+        <div class="adv-row">
+          <label>Origin</label>
+          <input id="origin" type="url" placeholder="https://example.com" />
+        </div>
+        <div class="adv-note">⚠ Headers apply to HLS segment fetches only. Iframes ignore them.</div>
+      </div>
+    </div>
+
+    <div class="media-wrap">
+      <video id="vid" controls></video>
+      <iframe id="iframe-player" allowfullscreen allow="autoplay; fullscreen"></iframe>
+      <div class="video-overlay" id="overlay">
+        <div class="spinner" id="spinner" style="display:none"></div>
+        <div class="overlay-msg" id="overlayMsg">Select a stream or paste a URL above</div>
+      </div>
+    </div>
+
+    <div class="status-bar" id="statusBar">
+      <span><span class="dot warn"></span>No stream loaded</span>
+    </div>
+  </div>
+
+  <!-- ── Right: source panel ── -->
+  <div class="source-panel">
+    <div class="panel-head">
+      <h2>Sources</h2>
+      <span class="ph-cnt" id="totalBadge">0</span>
+    </div>
+
+    <!-- Tabs -->
+    <div class="src-tabs">
+      <div class="src-tab active" id="tab-vidnest" onclick="switchTab('vidnest')">⚡ VidNest</div>
+      <div class="src-tab" id="tab-vaplayer" onclick="switchTab('vaplayer')">🎬 VAPlayer</div>
+    </div>
+
+    <!-- VidNest pane -->
+    <div class="fetch-pane visible" id="pane-vidnest">
+      <div class="fetch-inner">
+        <div class="fetch-row">
+          <input id="vn-tmdb" type="number" placeholder="TMDB ID" value="280" style="width:82px;flex:none"/>
+          <select id="vn-mtype">
+            <option value="movie">Movie</option>
+            <option value="tv">TV</option>
+          </select>
+          <button class="btn-movie" id="vn-btn" onclick="fetchVidnest()">Fetch</button>
+        </div>
+        <div class="ep-row" id="vn-ep" style="display:none">
+          <input id="vn-season"  type="number" placeholder="Season"  value="1"/>
+          <input id="vn-episode" type="number" placeholder="Episode" value="1"/>
+        </div>
+      </div>
+      <div class="fetch-status" id="vn-status">Enter a TMDB ID and click Fetch.</div>
+    </div>
+
+    <!-- VAPlayer pane -->
+    <div class="fetch-pane" id="pane-vaplayer">
+      <div class="fetch-inner">
+        <div class="type-toggle" style="margin-bottom:2px;">
+          <button class="type-btn active-movie" id="va-btn-movie" onclick="vaSetType('movie')">🎬 Movie</button>
+          <button class="type-btn" id="va-btn-tv" onclick="vaSetType('tv')">📺 TV Show</button>
+        </div>
+        <div class="fetch-row">
+          <input id="va-tmdb" type="number" placeholder="TMDB ID" value="76341" style="width:82px;flex:none"/>
+          <button class="btn-movie" id="va-btn" onclick="fetchVaplayer()">Fetch</button>
+        </div>
+        <div class="ep-row" id="va-ep" style="display:none">
+          <input id="va-season"  type="number" placeholder="Season"  value="1"/>
+          <input id="va-episode" type="number" placeholder="Episode" value="1"/>
+        </div>
+      </div>
+      <div class="fetch-status" id="va-status">Enter a TMDB ID and click Fetch.</div>
+      <!-- Movie meta -->
+      <div class="movie-meta" id="va-meta">
+        <div class="movie-meta-title" id="va-title"></div>
+        <div class="movie-meta-row" id="va-badges"></div>
+      </div>
+    </div>
+
+    <div class="stream-list" id="streamList"></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// Shared state
+// ═══════════════════════════════════════════════════════════════════
+let hlsPlayer  = null;
+let activeItem = null;
+let currentTab = 'vidnest';
+let vaType     = 'movie';
+
+// ═══════════════════════════════════════════════════════════════════
+// VidNest resolver (hits new.vidnest.fun directly)
+// ═══════════════════════════════════════════════════════════════════
+const ALPHA = "RB0fpH8ZEyVLkv7c2i6MAJ5u3IKFDxlS1NTsnGaqmXYdUrtzjwObCgQP94hoeW+/=";
+const SERVERS = {
+  catflix:"movies4f", ophim:"klikxxi",    alfa:"moviesapi",
+  beta:"purstream",   lamda:"allmovies",  prime:"catflix",
+  hexa:"vidlink",     sigma:"hollymoviehd", gama:"flixhq", delta:"allmovies",
+};
+const PROXY_LIST = [
+  { name:"corsproxy.io", wrap: u=>`https://corsproxy.io/?url=${encodeURIComponent(u)}` },
+  { name:"allorigins",   wrap: u=>`https://api.allorigins.win/raw?url=${encodeURIComponent(u)}` },
+  { name:"codetabs",     wrap: u=>`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}` },
+  { name:"htmldriven",   wrap: u=>`https://cors.htmldriven.com/?url=${encodeURIComponent(u)}` },
+  { name:"thingproxy",   wrap: u=>`https://thingproxy.freeboard.io/fetch/${u}` },
+  { name:"corsanywhere", wrap: u=>`https://cors-anywhere.herokuapp.com/${u}` },
+];
+const SUB_HOSTS = ["opensubtitles.org","opensubtitles.com","wyzie.io","vdrk.site"];
+const SUB_EXTS  = [".vtt",".srt",".ass",".ssa"];
+let vnProxy = null;
+
+function vnDecode(data) {
+  const val={};
+  for(let i=0;i<ALPHA.length;i++) val[ALPHA[i]]=i;
+  data=data.replace(/\s+/g,"");
+  const out=[];
+  for(let i=0;i<data.length;i+=4){
+    const chunk=(data.slice(i,i+4)+"====").slice(0,4);
+    const n=chunk.split("").map(c=>val[c]??64);
+    out.push((n[0]<<2)|(n[1]>>4));
+    if(n[2]!==64) out.push(((n[1]&15)<<4)|(n[2]>>2));
+    if(n[3]!==64) out.push(((n[2]&3)<<6)|n[3]);
+  }
+  return JSON.parse(new TextDecoder().decode(new Uint8Array(out)));
+}
+function isSub(url){
+  const u=url.toLowerCase();
+  return SUB_HOSTS.some(h=>u.includes(h))||SUB_EXTS.some(e=>u.split("?")[0].endsWith(e));
+}
+function extractUrls(obj,found=[]){
+  if(!obj||typeof obj!=="object") return found;
+  if(Array.isArray(obj)){obj.forEach(v=>extractUrls(v,found));return found;}
+  for(const [k,v] of Object.entries(obj)){
+    if((k==="url"||k==="file")&&typeof v==="string"&&v.startsWith("http")){
+      if(!isSub(v)) found.push(vnTransform(v));
+    } else extractUrls(v,found);
+  }
+  return found;
+}
+function vnTransform(url){
+  try{
+    const u=new URL(url);
+    if(u.hostname==="goodstream.cc"){
+      const s=u.pathname.split("/").filter(Boolean);
+      if((s[0]==="streamsvr"||s[0]==="pl")&&s[1]) return `${u.protocol}//${u.hostname}/embed/${s[1]}`;
+    }
+  }catch{}
+  return url;
+}
+async function vnProbeProxy(p){
+  try{
+    const r=await fetch(p.wrap("https://new.vidnest.fun/moviesapi/movie/254"),{signal:AbortSignal.timeout(8000)});
+    if(!r.ok) return false;
+    return !!(await r.json())?.data;
+  }catch{return false;}
+}
+async function vnFindProxy(fn){
+  for(const p of PROXY_LIST){
+    if(fn) fn(`Trying proxy: ${p.name}…`,"warn");
+    if(await vnProbeProxy(p)){vnProxy=p;return true;}
+  }
+  return false;
+}
+async function vnFetchServer(backend,path){
+  const r=await fetch(vnProxy.wrap(`https://new.vidnest.fun/${backend}/${path}`),{signal:AbortSignal.timeout(14000)});
+  if(!r.ok) throw new Error(`HTTP ${r.status}`);
+  const raw=await r.json();
+  if(!raw?.data) throw new Error("no data field");
+  return extractUrls(vnDecode(raw.data));
+}
+
+document.getElementById("vn-mtype").addEventListener("change",function(){
+  document.getElementById("vn-ep").style.display=this.value==="tv"?"flex":"none";
+  document.getElementById("vn-btn").className=this.value==="tv"?"btn-tv":"btn-movie";
+});
+
+async function fetchVidnest(){
+  const tmdb   = document.getElementById("vn-tmdb").value.trim();
+  const mtype  = document.getElementById("vn-mtype").value;
+  const season = document.getElementById("vn-season").value||"1";
+  const ep     = document.getElementById("vn-episode").value||"1";
+  if(!tmdb){vnSetStatus("Enter a TMDB ID first.","err");return;}
+
+  const path=mtype==="movie"?`movie/${tmdb}`:`tv/${tmdb}/${season}/${ep}`;
+  clearList();
+  document.getElementById("hdr-status").textContent="fetching…";
+
+  if(!vnProxy){
+    vnSetStatus("Finding proxy…","warn");
+    if(!await vnFindProxy(vnSetStatus)){
+      vnSetStatus("All proxies failed.","err");
+      document.getElementById("hdr-status").textContent="error";
+      return;
+    }
+  }
+  vnSetStatus(`Resolving via ${vnProxy.name}…`,"warn");
+
+  const jobs=Object.entries(SERVERS).map(async([name,backend])=>{
+    try{
+      const urls=await vnFetchServer(backend,path);
+      return{server:name,streams:urls.map(u=>({url:u,type:detectType(u)}))};
+    }catch(e){
+      if(e.message.includes("Failed to fetch")||e.message.includes("NetworkError")){
+        vnProxy=null;
+        if(await vnFindProxy(null)){
+          try{const urls=await vnFetchServer(backend,path);return{server:name,streams:urls.map(u=>({url:u,type:detectType(u)}))}}catch{return null;}
+        }
+      }
+      return null;
+    }
+  });
+
+  const results=(await Promise.all(jobs)).filter(r=>r&&r.streams.length>0);
+  const total=results.reduce((n,r)=>n+r.streams.length,0);
+
+  if(!results.length){vnSetStatus("No streams found.","err");document.getElementById("hdr-status").textContent="no results";return;}
+
+  results.forEach(srv=>{
+    addGroup(srv.server, srv.streams.map(s=>({
+      pill: s.type, label: s.type.toUpperCase(), url: s.url, type: s.type
+    })));
+  });
+  updateTotal(total);
+  vnSetStatus(`✓ ${total} stream(s) across ${results.length} server(s)`,"ok");
+  document.getElementById("hdr-status").textContent=`${total} streams`;
+}
+function vnSetStatus(msg,cls=""){setFetchStatus("vn-status",msg,cls);}
+
+// ═══════════════════════════════════════════════════════════════════
+// VAPlayer extractor (streamdata.vaplayer.ru)
+// ═══════════════════════════════════════════════════════════════════
+const VA_API   = "https://streamdata.vaplayer.ru/api.php";
+const VA_EMBED = "https://vaplayer.ru/embed";
+const VA_PROXY = "https://corsproxy.io/?url=";
+
+function vaSetType(type){
+  vaType=type;
+  document.getElementById("va-ep").style.display=type==="tv"?"flex":"none";
+  document.getElementById("va-btn-movie").className="type-btn"+(type==="movie"?" active-movie":"");
+  document.getElementById("va-btn-tv").className="type-btn"+(type==="tv"?" active-tv":"");
+  document.getElementById("va-btn").className=type==="tv"?"btn-tv":"btn-movie";
+}
+
+function vaIsPlaylist(url){return url.includes("/playlist/")||url.includes("list.m3u8");}
+
+async function fetchVaplayer(){
+  const tmdb    = document.getElementById("va-tmdb").value.trim();
+  const season  = document.getElementById("va-season").value||"1";
+  const episode = document.getElementById("va-episode").value||"1";
+  if(!tmdb){vaSetStatus("Enter a TMDB ID first.","err");return;}
+
+  let apiUrl, embedUrl;
+  if(vaType==="movie"){
+    apiUrl   = `${VA_API}?tmdb=${encodeURIComponent(tmdb)}&type=movie`;
+    embedUrl = `${VA_EMBED}/movie/${encodeURIComponent(tmdb)}`;
+  } else {
+    apiUrl   = `${VA_API}?tmdb=${encodeURIComponent(tmdb)}&type=tv&season=${encodeURIComponent(season)}&episode=${encodeURIComponent(episode)}`;
+    embedUrl = `${VA_EMBED}/tv/${encodeURIComponent(tmdb)}/${encodeURIComponent(season)}/${encodeURIComponent(episode)}`;
+  }
+
+  clearList();
+  hideMeta();
+  document.getElementById("hdr-status").textContent="fetching…";
+  vaSetStatus("Fetching from VAPlayer…","warn");
+
+  try{
+    const res=await fetch(`${VA_PROXY}${encodeURIComponent(apiUrl)}`,{
+      headers:{
+        "Referer":"https://vaplayer.ru/","Origin":"https://vaplayer.ru",
+        "Accept":"application/json, */*",
+      }
+    });
+    if(!res.ok) throw new Error("HTTP "+res.status);
+    const json=await res.json();
+    if(json.status_code!=="200") throw new Error("API error — check TMDB ID.");
+
+    const d=json.data;
+    const raw=d.stream_urls||[];
+    const playlists=raw.filter(vaIsPlaylist);
+    const mirrors=raw.filter(u=>!vaIsPlaylist(u));
+    const sorted=[...playlists,...mirrors];
+
+    // Show meta
+    showMeta(d.title||"Unknown", vaType, sorted.length, d.imdb_id||null);
+
+    const streams=[];
+    let mc=0;
+    // Embed first
+    streams.push({pill:"embed",label:"Embed",url:embedUrl,type:"embed"});
+    sorted.forEach(url=>{
+      const pl=vaIsPlaylist(url);
+      if(!pl) mc++;
+      streams.push({
+        pill: pl?"playlist":"mirror",
+        label: pl?"Playlist":`Mirror ${mc}`,
+        url,
+        type: pl?"hls":"hls"
+      });
+    });
+    if(json.thumbnails_url) streams.push({pill:"txt",label:"VTT",url:json.thumbnails_url,type:"txt"});
+
+    addGroup("VAPlayer", streams);
+    updateTotal(streams.length);
+    vaSetStatus(`✓ ${streams.length} URL(s) found`,"ok");
+    document.getElementById("hdr-status").textContent=`${streams.length} streams`;
+
+  }catch(e){
+    vaSetStatus(`Error: ${e.message}`,"err");
+    document.getElementById("hdr-status").textContent="error";
+  }
+}
+function vaSetStatus(msg,cls=""){setFetchStatus("va-status",msg,cls);}
+function showMeta(title,type,count,imdb){
+  document.getElementById("va-title").textContent=title;
+  const b=document.getElementById("va-badges");
+  b.innerHTML=`<span class="meta-badge ${type==="tv"?"mb-tv":"mb-accent"}">${type==="tv"?"📺 TV":"🎬 Movie"}</span>
+    <span class="meta-badge mb-gray">${count} URL(s)</span>`+
+    (imdb?`<a href="https://www.imdb.com/title/${imdb}/" target="_blank" style="font-size:.6rem;color:var(--accent);text-decoration:none">IMDb ↗</a>`:"");
+  document.getElementById("va-meta").classList.add("visible");
+}
+function hideMeta(){document.getElementById("va-meta").classList.remove("visible");}
+
+// ═══════════════════════════════════════════════════════════════════
+// Shared stream list rendering
+// ═══════════════════════════════════════════════════════════════════
+function clearList(){
+  document.getElementById("streamList").innerHTML="";
+  document.getElementById("totalBadge").textContent="0";
+}
+function updateTotal(n){document.getElementById("totalBadge").textContent=n;}
+
+function addGroup(serverName, streams){
+  const list=document.getElementById("streamList");
+  const group=document.createElement("div");
+  group.className="server-group";
+  const label=document.createElement("div");
+  label.className="server-label";
+  label.textContent=serverName;
+  group.appendChild(label);
+  streams.forEach(s=>{
+    const item=document.createElement("div");
+    item.className="stream-item";
+    item.innerHTML=`
+      <span class="type-tag tag-${s.pill}">${s.label}</span>
+      <span class="stream-url-text" title="${esc(s.url)}">${esc(s.url)}</span>
+      <span class="copy-icon" title="Copy URL" onclick="copyUrl('${esc(s.url)}',event)">⎘</span>
+      <span class="play-icon">▶</span>`;
+    item.addEventListener("click",(e)=>{
+      if(e.target.classList.contains("copy-icon")) return;
+      playStream(s.url,s.type,item);
+    });
+    group.appendChild(item);
+  });
+  list.appendChild(group);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Tab switching
+// ═══════════════════════════════════════════════════════════════════
+function switchTab(tab){
+  currentTab=tab;
+  ["vidnest","vaplayer"].forEach(t=>{
+    document.getElementById(`tab-${t}`).className="src-tab"+(t===tab?(t==="vaplayer"&&vaType==="tv"?" active-tv":" active"):"");
+    document.getElementById(`pane-${t}`).classList.toggle("visible",t===tab);
+  });
+  clearList();
+  if(tab==="vaplayer") hideMeta();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Media loading
+// ═══════════════════════════════════════════════════════════════════
+function detectType(url){
+  const u=url.toLowerCase().split("?")[0];
+  if(u.endsWith(".mp4")||u.endsWith(".webm")||u.endsWith(".mkv")) return "mp4";
+  if(u.endsWith(".mpd"))  return "dash";
+  if(u.endsWith(".txt"))  return "txt";
+  if(isEmbedUrl(url))     return "embed";
+  return "hls";
+}
+function isEmbedUrl(url){
+  try{
+    const h=new URL(url).hostname;
+    const hosts=["goodstream.cc","vidlink.pro","vidsrc.to","vidsrc.me","vidsrc.xyz",
+      "embed.su","multiembed.mov","2embed.cc","smashystream.com","moviesapi.club",
+      "vidfast.pro","vidnest.fun","warezcdn.link","frembed.hair","filemoon.sx","vaplayer.ru"];
+    if(hosts.some(e=>h.includes(e))) return true;
+    if(new URL(url).pathname.includes("/embed/")) return true;
+  }catch{}
+  return false;
+}
+
+function playStream(url,type,itemEl){
+  if(activeItem) activeItem.classList.remove("active");
+  activeItem=itemEl;
+  if(itemEl) itemEl.classList.add("active");
+  document.getElementById("manualUrl").value=url;
+  loadMedia(url,type);
+}
+function playManual(){
+  const url=document.getElementById("manualUrl").value.trim();
+  if(!url) return;
+  let type=document.getElementById("manualType").value;
+  if(type==="auto") type=detectType(url);
+  if(activeItem) activeItem.classList.remove("active");
+  activeItem=null;
+  loadMedia(url,type);
+}
+async function loadMedia(url,type){
+  showOverlay(true,"Loading…");
+  setStatus("warn",`Loading ${type.toUpperCase()}…`,url);
+  destroyPlayer();
+  if(type==="txt"){await loadTxt(url);return;}
+  if(type==="embed"){loadEmbed(url);return;}
+  if(type==="mp4"||type==="webm"||type==="dash"){loadNative(url,type);return;}
+  loadHls(url);
+}
+function destroyPlayer(){
+  if(hlsPlayer){hlsPlayer.destroy();hlsPlayer=null;}
+  const vid=document.getElementById("vid");
+  const ifr=document.getElementById("iframe-player");
+  vid.pause();vid.removeAttribute("src");vid.load();
+  vid.style.display="block";
+  ifr.style.display="none";ifr.src="about:blank";
+}
+function loadHls(url){
+  const vid=document.getElementById("vid");
+  const referer=document.getElementById("referer").value.trim();
+  const origin=document.getElementById("origin").value.trim();
+  if(Hls.isSupported()){
+    const cfg={enableWorker:true,lowLatencyMode:false};
+    if(referer||origin){
+      cfg.xhrSetup=function(xhr){
+        if(referer) xhr.setRequestHeader("Referer",referer);
+        if(origin)  xhr.setRequestHeader("Origin",origin);
+      };
+    }
+    hlsPlayer=new Hls(cfg);
+    hlsPlayer.loadSource(url);
+    hlsPlayer.attachMedia(vid);
+    hlsPlayer.on(Hls.Events.MANIFEST_PARSED,()=>{
+      vid.play().catch(()=>{});showOverlay(false);
+      setStatus("ok","Playing HLS",url);setTypeBadge("hls");
+    });
+    hlsPlayer.on(Hls.Events.ERROR,(_,data)=>{
+      if(data.fatal){showOverlay(false);setStatus("err",`HLS error: ${data.details}`,url);}
+    });
+  } else if(vid.canPlayType("application/vnd.apple.mpegurl")){
+    vid.src=url;vid.play().catch(()=>{});
+    vid.oncanplay=()=>{showOverlay(false);setStatus("ok","Playing HLS (native)",url);setTypeBadge("hls");};
+  } else {showOverlay(false);setStatus("err","HLS not supported",url);}
+}
+function loadNative(url,type){
+  const vid=document.getElementById("vid");
+  vid.src=url;vid.play().catch(()=>{});
+  vid.oncanplay=()=>{showOverlay(false);setStatus("ok",`Playing ${type.toUpperCase()}`,url);setTypeBadge(type==="mp4"?"mp4":"dash");};
+  vid.onerror=()=>{showOverlay(false);setStatus("err","Playback error",url);};
+}
+function loadEmbed(url){
+  const vid=document.getElementById("vid");
+  const ifr=document.getElementById("iframe-player");
+  vid.style.display="none";ifr.style.display="block";ifr.src=url;
+  ifr.onload=()=>{showOverlay(false);setStatus("ok","Embed loaded",url);setTypeBadge("embed");};
+  setTimeout(()=>showOverlay(false),3000);
+}
+async function loadTxt(url){
+  try{
+    let text=null;
+    try{const r=await fetch(url,{signal:AbortSignal.timeout(10000)});if(r.ok) text=await r.text();}catch{}
+    if(!text&&vnProxy){const r=await fetch(vnProxy.wrap(url),{signal:AbortSignal.timeout(10000)});if(r.ok) text=await r.text();}
+    if(!text) throw new Error("Could not fetch .txt file");
+    const lines=text.split("\n").map(l=>l.trim()).filter(l=>l.startsWith("http"));
+    if(!lines.length) throw new Error("No URLs found in .txt");
+    const streams=lines.map((line,i)=>({pill:detectType(line),label:`#${i+1}`,url:line,type:detectType(line)}));
+    addGroup("txt playlist",streams);
+    updateTotal(lines.length);
+    showOverlay(false);setStatus("ok",`TXT: ${lines.length} URL(s) — playing first`,url);setTypeBadge("txt");
+    loadMedia(lines[0],detectType(lines[0]));
+  }catch(e){showOverlay(false);setStatus("err",`TXT error: ${e.message}`,url);}
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// UI helpers
+// ═══════════════════════════════════════════════════════════════════
+function toggleAdv(){
+  document.getElementById("advToggle").classList.toggle("open");
+  document.getElementById("advSection").classList.toggle("visible");
+}
+function showOverlay(show,msg=""){
+  document.getElementById("spinner").style.display=show?"block":"none";
+  document.getElementById("overlayMsg").textContent=msg;
+  document.getElementById("overlay").classList.toggle("hidden",!show);
+}
+function setStatus(type,label,url=""){
+  const bar=document.getElementById("statusBar");
+  const cls=type==="ok"?"ok":type==="err"?"err":"warn";
+  const short=url.length>55?url.slice(0,52)+"…":url;
+  bar.innerHTML=`<span><span class="dot ${cls}"></span>${label}</span>`
+    +(url?`<span id="activeBadge"></span><span style="color:var(--muted);font-size:.66rem;word-break:break-all">${short}</span>`:"");
+}
+function setTypeBadge(type){
+  const el=document.getElementById("activeBadge");
+  if(!el) return;
+  const m={hls:"mb-hls",mp4:"mb-mp4",embed:"mb-embed",txt:"mb-txt",dash:"mb-dash",playlist:"mb-playlist"};
+  el.className=`mbadge ${m[type]||""}`;el.textContent=type.toUpperCase();
+}
+function setFetchStatus(id,msg,cls=""){
+  const el=document.getElementById(id);el.textContent=msg;el.className=`fetch-status ${cls}`;
+}
+async function copyUrl(url,e){
+  e.stopPropagation();
+  try{
+    await navigator.clipboard.writeText(url);
+    const t=e.target;const orig=t.textContent;
+    t.textContent="✓";t.style.color="var(--ok)";
+    setTimeout(()=>{t.textContent=orig;t.style.color="";},1500);
+  }catch{}
+}
+function esc(s){
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+}
+
+// ── Auto-load from URL params ─────────────────────────────────────
+(function(){
+  const p=new URLSearchParams(window.location.search);
+  const r=p.get("r");
+  if(r){
+    const mv=r.match(/^\/movie\/(\d+)/);
+    const tv=r.match(/^\/tv\/(\d+)\/(\d+)\/(\d+)/);
+    if(mv){
+      document.getElementById("vn-tmdb").value=mv[1];
+      document.getElementById("va-tmdb").value=mv[1];
+      fetchVidnest();
+    } else if(tv){
+      document.getElementById("vn-tmdb").value=tv[1];
+      document.getElementById("vn-mtype").value="tv";
+      document.getElementById("vn-ep").style.display="flex";
+      document.getElementById("vn-season").value=tv[2];
+      document.getElementById("vn-episode").value=tv[3];
+      fetchVidnest();
+    }
+  }
+  const tmdb=p.get("tmdb")||p.get("id");
+  if(tmdb){
+    document.getElementById("vn-tmdb").value=tmdb;
+    document.getElementById("va-tmdb").value=tmdb;
+    if(p.get("type")==="tv"){
+      document.getElementById("vn-mtype").value="tv";
+      document.getElementById("vn-ep").style.display="flex";
+      if(p.get("season"))  document.getElementById("vn-season").value=p.get("season");
+      if(p.get("episode")) document.getElementById("vn-episode").value=p.get("episode");
+    }
+    fetchVidnest();
+  }
+})();
+</script>
+</body>
+</html>
