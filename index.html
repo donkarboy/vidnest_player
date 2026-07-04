@@ -10,7 +10,7 @@
     --bg:#0a0a0f; --surface:#111118; --surface2:#18181f; --border:#1e1e2e;
     --accent:#6c63ff; --accent2:#a78bfa; --text:#e2e8f0; --muted:#64748b;
     --ok:#4ade80; --err:#f87171; --warn:#fb923c;
-    --tv:#f59e42; --mono:'JetBrains Mono','Fira Code',monospace;
+    --tv:#f59e42; --rock:#38bdf8; --mono:'JetBrains Mono','Fira Code',monospace;
   }
   *{margin:0;padding:0;box-sizing:border-box;}
   body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;}
@@ -18,7 +18,6 @@
     background-image:linear-gradient(rgba(108,99,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(108,99,255,.025) 1px,transparent 1px);
     background-size:40px 40px;pointer-events:none;z-index:0;}
 
-  /* ── Header ── */
   header{position:relative;z-index:1;padding:13px 20px;border-bottom:1px solid var(--border);
     display:flex;align-items:center;gap:10px;}
   .logo-dot{width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,#6c63ff,#a78bfa);
@@ -26,11 +25,9 @@
   header h1{font-size:.95rem;font-weight:700;letter-spacing:.3px;color:var(--accent2);}
   #hdr-status{font-size:.7rem;color:var(--muted);margin-left:auto;}
 
-  /* ── Layout ── */
   .wrap{position:relative;z-index:1;display:grid;grid-template-columns:1fr 340px;height:calc(100vh - 51px);}
   @media(max-width:880px){.wrap{grid-template-columns:1fr;grid-template-rows:auto 1fr;}}
 
-  /* ── Player side ── */
   .player-side{display:flex;flex-direction:column;padding:14px;gap:10px;overflow-y:auto;}
 
   .url-bar{display:flex;gap:6px;}
@@ -43,7 +40,6 @@
     padding:9px 15px;font-size:.8rem;font-weight:600;cursor:pointer;white-space:nowrap;}
   .url-bar button:hover{opacity:.88;}
 
-  /* Advanced headers */
   .adv-toggle{font-size:.7rem;color:var(--muted);cursor:pointer;user-select:none;
     display:flex;align-items:center;gap:4px;width:fit-content;}
   .adv-toggle:hover{color:var(--accent2);}
@@ -59,7 +55,6 @@
   .adv-row input:focus{border-color:var(--accent);}
   .adv-note{font-size:.65rem;color:var(--muted);}
 
-  /* Media wrap */
   .media-wrap{position:relative;background:#000;border-radius:12px;overflow:hidden;aspect-ratio:16/9;width:100%;flex-shrink:0;}
   video{width:100%;height:100%;display:block;}
   #iframe-player{width:100%;height:100%;border:none;display:none;background:#000;}
@@ -79,7 +74,6 @@
   .mb-embed{background:#0a1f2a;color:#38bdf8;}.mb-txt{background:#1a1535;color:var(--accent2);}
   .mb-dash{background:#1a0a2a;color:#c084fc;}.mb-playlist{background:#1a1535;color:var(--accent2);}
 
-  /* ── Source panel ── */
   .source-panel{border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
   @media(max-width:880px){.source-panel{border-left:none;border-top:1px solid var(--border);max-height:44vh;}}
 
@@ -87,15 +81,14 @@
   .panel-head h2{font-size:.8rem;font-weight:700;}
   .ph-cnt{margin-left:auto;background:var(--accent);color:#fff;font-size:.6rem;font-weight:700;border-radius:20px;padding:2px 8px;}
 
-  /* Source tabs */
   .src-tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0;}
-  .src-tab{flex:1;padding:9px 4px;font-size:.72rem;font-weight:600;text-align:center;
+  .src-tab{flex:1;padding:9px 4px;font-size:.68rem;font-weight:600;text-align:center;
     cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;transition:all .15s;}
   .src-tab:hover{color:var(--text);}
   .src-tab.active{color:var(--accent2);border-bottom-color:var(--accent);}
   .src-tab.active-tv{color:var(--tv);border-bottom-color:var(--tv);}
+  .src-tab.active-rock{color:var(--rock);border-bottom-color:var(--rock);}
 
-  /* Fetch bars */
   .fetch-pane{display:none;flex-direction:column;flex-shrink:0;}
   .fetch-pane.visible{display:flex;}
   .fetch-inner{padding:10px 11px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:6px;}
@@ -108,7 +101,9 @@
   .fetch-row button{border:none;border-radius:7px;padding:7px 12px;font-size:.75rem;font-weight:600;cursor:pointer;color:#fff;}
   .fetch-row button.btn-movie{background:var(--accent);}
   .fetch-row button.btn-tv{background:var(--tv);color:#1a1200;}
+  .fetch-row button.btn-rock{background:var(--rock);color:#0a1a24;}
   .fetch-row button:hover{opacity:.88;}
+  .fetch-row button:disabled{opacity:.45;cursor:not-allowed;}
   .ep-row{display:flex;gap:5px;}
   .ep-row input{flex:1;background:var(--surface);border:1px solid var(--border);color:var(--text);
     padding:6px 8px;border-radius:7px;font-size:.74rem;outline:none;}
@@ -117,11 +112,11 @@
     font-size:.7rem;font-weight:600;cursor:pointer;transition:all .15s;background:var(--surface2);color:var(--muted);}
   .type-btn.active-movie{background:var(--accent);color:#fff;border-color:var(--accent);}
   .type-btn.active-tv{background:var(--tv);color:#1a1200;border-color:var(--tv);}
+  .type-btn.active-rock{background:var(--rock);color:#0a1a24;border-color:var(--rock);}
 
   .fetch-status{font-size:.68rem;padding:5px 11px;color:var(--muted);min-height:20px;flex-shrink:0;}
   .fetch-status.ok{color:var(--ok);}.fetch-status.err{color:var(--err);}.fetch-status.warn{color:var(--warn);}
 
-  /* Stream list */
   .stream-list{flex:1;overflow-y:auto;padding:7px 5px;display:flex;flex-direction:column;gap:3px;}
   .stream-list:empty::after{content:"No streams loaded.";display:block;text-align:center;
     color:var(--muted);font-size:.74rem;padding:26px 0;}
@@ -139,6 +134,7 @@
   .tag-dash{background:#1a0a2a;color:#c084fc;}.tag-txt{background:#1a1535;color:var(--accent2);}
   .tag-embed{background:#0a1f2a;color:#38bdf8;}.tag-playlist{background:#1a1535;color:var(--accent2);}
   .tag-mirror{background:var(--surface2);color:var(--muted);}
+  .tag-rock{background:#0a1f2a;color:var(--rock);}
   .stream-url-text{font-size:.63rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0;}
   .stream-item.active .stream-url-text{color:var(--accent2);}
   .play-icon{flex-shrink:0;color:var(--accent);font-size:.72rem;opacity:0;}
@@ -147,7 +143,6 @@
   .stream-item:hover .copy-icon{opacity:1;}
   .copy-icon:hover{color:var(--ok);}
 
-  /* Movie info card */
   .movie-meta{padding:10px 12px;border-bottom:1px solid var(--border);display:none;flex-direction:column;gap:5px;flex-shrink:0;}
   .movie-meta.visible{display:flex;}
   .movie-meta-title{font-size:.78rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -155,6 +150,7 @@
   .meta-badge{font-size:.6rem;padding:2px 7px;border-radius:4px;font-weight:600;}
   .mb-accent{background:rgba(108,99,255,.15);color:#a78bfa;border:1px solid rgba(108,99,255,.3);}
   .mb-tv{background:rgba(245,158,66,.12);color:var(--tv);border:1px solid rgba(245,158,66,.3);}
+  .mb-rock{background:rgba(56,189,248,.12);color:var(--rock);border:1px solid rgba(56,189,248,.3);}
   .mb-gray{background:var(--surface2);color:var(--muted);border:1px solid var(--border);}
 
   ::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-track{background:transparent;}
@@ -226,11 +222,12 @@
 
     <!-- Tabs -->
     <div class="src-tabs">
-      <div class="src-tab active" id="tab-vidnest" onclick="switchTab('vidnest')">⚡ VidNest</div>
-      <div class="src-tab" id="tab-vaplayer" onclick="switchTab('vaplayer')">🎬 VAPlayer</div>
+      <div class="src-tab active"      id="tab-vidnest"  onclick="switchTab('vidnest')">⚡ VidNest</div>
+      <div class="src-tab"             id="tab-vaplayer" onclick="switchTab('vaplayer')">🎬 VAPlayer</div>
+      <div class="src-tab"             id="tab-vidrock"  onclick="switchTab('vidrock')">🪨 VidRock</div>
     </div>
 
-    <!-- VidNest pane -->
+    <!-- ══ VidNest pane ══ -->
     <div class="fetch-pane visible" id="pane-vidnest">
       <div class="fetch-inner">
         <div class="fetch-row">
@@ -249,7 +246,7 @@
       <div class="fetch-status" id="vn-status">Enter a TMDB ID and click Fetch.</div>
     </div>
 
-    <!-- VAPlayer pane -->
+    <!-- ══ VAPlayer pane ══ -->
     <div class="fetch-pane" id="pane-vaplayer">
       <div class="fetch-inner">
         <div class="type-toggle" style="margin-bottom:2px;">
@@ -266,10 +263,32 @@
         </div>
       </div>
       <div class="fetch-status" id="va-status">Enter a TMDB ID and click Fetch.</div>
-      <!-- Movie meta -->
       <div class="movie-meta" id="va-meta">
         <div class="movie-meta-title" id="va-title"></div>
         <div class="movie-meta-row" id="va-badges"></div>
+      </div>
+    </div>
+
+    <!-- ══ VidRock pane ══ -->
+    <div class="fetch-pane" id="pane-vidrock">
+      <div class="fetch-inner">
+        <div class="type-toggle" style="margin-bottom:2px;">
+          <button class="type-btn active-rock" id="vr-btn-movie" onclick="vrSetType('movie')">🎬 Movie</button>
+          <button class="type-btn" id="vr-btn-tv" onclick="vrSetType('tv')">📺 TV Show</button>
+        </div>
+        <div class="fetch-row">
+          <input id="vr-tmdb" type="number" placeholder="TMDB ID" value="280" style="width:82px;flex:none"/>
+          <button class="btn-rock" id="vr-btn" onclick="fetchVidrock()">Fetch</button>
+        </div>
+        <div class="ep-row" id="vr-ep" style="display:none">
+          <input id="vr-season"  type="number" placeholder="Season"  value="1"/>
+          <input id="vr-episode" type="number" placeholder="Episode" value="1"/>
+        </div>
+      </div>
+      <div class="fetch-status" id="vr-status">Enter a TMDB ID and click Fetch.</div>
+      <div class="movie-meta" id="vr-meta">
+        <div class="movie-meta-title" id="vr-meta-title"></div>
+        <div class="movie-meta-row"   id="vr-meta-badges"></div>
       </div>
     </div>
 
@@ -285,9 +304,10 @@ let hlsPlayer  = null;
 let activeItem = null;
 let currentTab = 'vidnest';
 let vaType     = 'movie';
+let vrType     = 'movie';
 
 // ═══════════════════════════════════════════════════════════════════
-// VidNest resolver (hits new.vidnest.fun directly)
+// VidNest resolver
 // ═══════════════════════════════════════════════════════════════════
 const ALPHA = "RB0fpH8ZEyVLkv7c2i6MAJ5u3IKFDxlS1NTsnGaqmXYdUrtzjwObCgQP94hoeW+/=";
 const SERVERS = {
@@ -425,7 +445,7 @@ async function fetchVidnest(){
 function vnSetStatus(msg,cls=""){setFetchStatus("vn-status",msg,cls);}
 
 // ═══════════════════════════════════════════════════════════════════
-// VAPlayer extractor (streamdata.vaplayer.ru)
+// VAPlayer extractor
 // ═══════════════════════════════════════════════════════════════════
 const VA_API   = "https://streamdata.vaplayer.ru/api.php";
 const VA_EMBED = "https://vaplayer.ru/embed";
@@ -457,16 +477,13 @@ async function fetchVaplayer(){
   }
 
   clearList();
-  hideMeta();
+  hideMeta("va");
   document.getElementById("hdr-status").textContent="fetching…";
   vaSetStatus("Fetching from VAPlayer…","warn");
 
   try{
     const res=await fetch(`${VA_PROXY}${encodeURIComponent(apiUrl)}`,{
-      headers:{
-        "Referer":"https://vaplayer.ru/","Origin":"https://vaplayer.ru",
-        "Accept":"application/json, */*",
-      }
+      headers:{"Referer":"https://vaplayer.ru/","Origin":"https://vaplayer.ru","Accept":"application/json, */*"}
     });
     if(!res.ok) throw new Error("HTTP "+res.status);
     const json=await res.json();
@@ -478,22 +495,15 @@ async function fetchVaplayer(){
     const mirrors=raw.filter(u=>!vaIsPlaylist(u));
     const sorted=[...playlists,...mirrors];
 
-    // Show meta
-    showMeta(d.title||"Unknown", vaType, sorted.length, d.imdb_id||null);
+    showMeta("va", d.title||"Unknown", vaType, sorted.length, d.imdb_id||null);
 
     const streams=[];
     let mc=0;
-    // Embed first
     streams.push({pill:"embed",label:"Embed",url:embedUrl,type:"embed"});
     sorted.forEach(url=>{
       const pl=vaIsPlaylist(url);
       if(!pl) mc++;
-      streams.push({
-        pill: pl?"playlist":"mirror",
-        label: pl?"Playlist":`Mirror ${mc}`,
-        url,
-        type: pl?"hls":"hls"
-      });
+      streams.push({pill:pl?"playlist":"mirror",label:pl?"Playlist":`Mirror ${mc}`,url,type:"hls"});
     });
     if(json.thumbnails_url) streams.push({pill:"txt",label:"VTT",url:json.thumbnails_url,type:"txt"});
 
@@ -501,22 +511,140 @@ async function fetchVaplayer(){
     updateTotal(streams.length);
     vaSetStatus(`✓ ${streams.length} URL(s) found`,"ok");
     document.getElementById("hdr-status").textContent=`${streams.length} streams`;
-
   }catch(e){
     vaSetStatus(`Error: ${e.message}`,"err");
     document.getElementById("hdr-status").textContent="error";
   }
 }
 function vaSetStatus(msg,cls=""){setFetchStatus("va-status",msg,cls);}
-function showMeta(title,type,count,imdb){
-  document.getElementById("va-title").textContent=title;
-  const b=document.getElementById("va-badges");
-  b.innerHTML=`<span class="meta-badge ${type==="tv"?"mb-tv":"mb-accent"}">${type==="tv"?"📺 TV":"🎬 Movie"}</span>
+
+// ═══════════════════════════════════════════════════════════════════
+// VidRock resolver
+// ═══════════════════════════════════════════════════════════════════
+const VR_KEY   = "x7k9mPqT2rWvY8zA5bC3nF6hJ2lK4mN9";
+const VR_API   = "https://vidrock.ru/api";
+const VR_EMBED = "https://vidrock.ru/embed";
+
+async function vrAesEncrypt(plain){
+  const keyBytes = new TextEncoder().encode(VR_KEY);
+  const iv       = keyBytes.slice(0,16);
+  const plainBytes = new TextEncoder().encode(plain);
+  const padLen   = 16-(plainBytes.length%16);
+  const padded   = new Uint8Array(plainBytes.length+padLen);
+  padded.set(plainBytes);
+  padded.fill(padLen,plainBytes.length);
+  const key = await crypto.subtle.importKey("raw",keyBytes,{name:"AES-CBC"},false,["encrypt"]);
+  const enc = await crypto.subtle.encrypt({name:"AES-CBC",iv},key,padded);
+  return btoa(String.fromCharCode(...new Uint8Array(enc)))
+    .replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+}
+
+function vrSetType(type){
+  vrType=type;
+  document.getElementById("vr-ep").style.display=type==="tv"?"flex":"none";
+  document.getElementById("vr-btn-movie").className="type-btn"+(type==="movie"?" active-rock":"");
+  document.getElementById("vr-btn-tv").className   ="type-btn"+(type==="tv"   ?" active-rock":"");
+  document.getElementById("vr-btn").className=type==="tv"?"btn-tv":"btn-rock";
+}
+
+async function fetchVidrock(){
+  const tmdb    = document.getElementById("vr-tmdb").value.trim();
+  const season  = document.getElementById("vr-season").value||"1";
+  const episode = document.getElementById("vr-episode").value||"1";
+  if(!tmdb){vrSetStatus("Enter a TMDB ID first.","err");return;}
+
+  clearList();
+  hideMeta("vr");
+  document.getElementById("hdr-status").textContent="fetching…";
+  vrSetStatus("Encrypting token…","warn");
+
+  const btn=document.getElementById("vr-btn");
+  btn.disabled=true;
+
+  try{
+    const plain = vrType==="tv"?`${tmdb}_${season}_${episode}`:tmdb;
+    const token = await vrAesEncrypt(plain);
+    const apiUrl= `${VR_API}/${vrType}/${token}`;
+    const embedUrl = vrType==="movie"
+      ? `${VR_EMBED}/movie/${encodeURIComponent(tmdb)}`
+      : `${VR_EMBED}/tv/${encodeURIComponent(tmdb)}/${encodeURIComponent(season)}/${encodeURIComponent(episode)}`;
+
+    vrSetStatus("Fetching from VidRock…","warn");
+
+    const res=await fetch(apiUrl,{
+      headers:{
+        "Referer":embedUrl,
+        "User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+      },
+      signal:AbortSignal.timeout(15000)
+    });
+    if(!res.ok) throw new Error("HTTP "+res.status);
+    const data=await res.json();
+
+    const streams=Object.entries(data).filter(([,v])=>v?.url);
+    if(!streams.length) throw new Error("No streams found.");
+
+    // Embed first
+    const items=[];
+    items.push({pill:"embed",label:"Embed",url:embedUrl,type:"embed"});
+    streams.forEach(([name,info])=>{
+      const t=detectType(info.url);
+      items.push({pill:"rock",label:name,url:info.url,type:t});
+    });
+
+    showMeta("vr",
+      vrType==="tv"?`TMDB ${tmdb} · S${season}E${episode}`:`TMDB ${tmdb}`,
+      vrType, items.length, null
+    );
+    addGroup("VidRock", items);
+    updateTotal(items.length);
+    vrSetStatus(`✓ ${items.length} URL(s) found`,"ok");
+    document.getElementById("hdr-status").textContent=`${items.length} streams`;
+  }catch(e){
+    vrSetStatus(`Error: ${e.message}`,"err");
+    document.getElementById("hdr-status").textContent="error";
+  }finally{
+    btn.disabled=false;
+  }
+}
+function vrSetStatus(msg,cls=""){setFetchStatus("vr-status",msg,cls);}
+
+// ═══════════════════════════════════════════════════════════════════
+// Shared meta helpers
+// ═══════════════════════════════════════════════════════════════════
+function showMeta(prefix, title, type, count, imdb){
+  document.getElementById(`${prefix}-meta-title`||`${prefix}-title`).textContent=title;
+  const b=document.getElementById(`${prefix}-meta-badges`||`${prefix}-badges`);
+  const isRock = prefix==="vr";
+  b.innerHTML=`<span class="meta-badge ${type==="tv"?"mb-tv":isRock?"mb-rock":"mb-accent"}">${type==="tv"?"📺 TV":"🎬 Movie"}</span>
     <span class="meta-badge mb-gray">${count} URL(s)</span>`+
     (imdb?`<a href="https://www.imdb.com/title/${imdb}/" target="_blank" style="font-size:.6rem;color:var(--accent);text-decoration:none">IMDb ↗</a>`:"");
-  document.getElementById("va-meta").classList.add("visible");
+  document.getElementById(`${prefix}-meta`).classList.add("visible");
 }
-function hideMeta(){document.getElementById("va-meta").classList.remove("visible");}
+function hideMeta(prefix){
+  const el=document.getElementById(`${prefix}-meta`);
+  if(el) el.classList.remove("visible");
+}
+
+// ─── fix: va-meta uses different sub-element IDs ──────────────────
+// Patch showMeta for va (legacy IDs)
+const _showMetaOrig=showMeta;
+function showMeta(prefix,title,type,count,imdb){
+  const titleEl = document.getElementById(
+    prefix==="va"?"va-title":`${prefix}-meta-title`
+  );
+  const badgesEl= document.getElementById(
+    prefix==="va"?"va-badges":`${prefix}-meta-badges`
+  );
+  const metaEl  = document.getElementById(`${prefix}-meta`);
+  if(!titleEl||!badgesEl||!metaEl) return;
+  titleEl.textContent=title;
+  const isRock=prefix==="vr";
+  badgesEl.innerHTML=`<span class="meta-badge ${type==="tv"?"mb-tv":isRock?"mb-rock":"mb-accent"}">${type==="tv"?"📺 TV":"🎬 Movie"}</span>
+    <span class="meta-badge mb-gray">${count} URL(s)</span>`+
+    (imdb?`<a href="https://www.imdb.com/title/${imdb}/" target="_blank" style="font-size:.6rem;color:var(--accent);text-decoration:none">IMDb ↗</a>`:"");
+  metaEl.classList.add("visible");
+}
 
 // ═══════════════════════════════════════════════════════════════════
 // Shared stream list rendering
@@ -557,12 +685,22 @@ function addGroup(serverName, streams){
 // ═══════════════════════════════════════════════════════════════════
 function switchTab(tab){
   currentTab=tab;
-  ["vidnest","vaplayer"].forEach(t=>{
-    document.getElementById(`tab-${t}`).className="src-tab"+(t===tab?(t==="vaplayer"&&vaType==="tv"?" active-tv":" active"):"");
-    document.getElementById(`pane-${t}`).classList.toggle("visible",t===tab);
+  ["vidnest","vaplayer","vidrock"].forEach(t=>{
+    const tabEl=document.getElementById(`tab-${t}`);
+    const paneEl=document.getElementById(`pane-${t}`);
+    const isActive=t===tab;
+    let cls="src-tab";
+    if(isActive){
+      if(t==="vidrock") cls+=" active-rock";
+      else if(t==="vaplayer"&&vaType==="tv") cls+=" active-tv";
+      else cls+=" active";
+    }
+    tabEl.className=cls;
+    paneEl.classList.toggle("visible",isActive);
   });
   clearList();
-  if(tab==="vaplayer") hideMeta();
+  if(tab==="vaplayer") hideMeta("va");
+  if(tab==="vidrock")  hideMeta("vr");
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -581,7 +719,7 @@ function isEmbedUrl(url){
     const h=new URL(url).hostname;
     const hosts=["goodstream.cc","vidlink.pro","vidsrc.to","vidsrc.me","vidsrc.xyz",
       "embed.su","multiembed.mov","2embed.cc","smashystream.com","moviesapi.club",
-      "vidfast.pro","vidnest.fun","warezcdn.link","frembed.hair","filemoon.sx","vaplayer.ru"];
+      "vidfast.pro","vidnest.fun","warezcdn.link","frembed.hair","filemoon.sx","vaplayer.ru","vidrock.ru"];
     if(hosts.some(e=>h.includes(e))) return true;
     if(new URL(url).pathname.includes("/embed/")) return true;
   }catch{}
@@ -729,6 +867,7 @@ function esc(s){
     if(mv){
       document.getElementById("vn-tmdb").value=mv[1];
       document.getElementById("va-tmdb").value=mv[1];
+      document.getElementById("vr-tmdb").value=mv[1];
       fetchVidnest();
     } else if(tv){
       document.getElementById("vn-tmdb").value=tv[1];
@@ -736,6 +875,10 @@ function esc(s){
       document.getElementById("vn-ep").style.display="flex";
       document.getElementById("vn-season").value=tv[2];
       document.getElementById("vn-episode").value=tv[3];
+      document.getElementById("vr-tmdb").value=tv[1];
+      vrSetType("tv");
+      document.getElementById("vr-season").value=tv[2];
+      document.getElementById("vr-episode").value=tv[3];
       fetchVidnest();
     }
   }
@@ -743,11 +886,15 @@ function esc(s){
   if(tmdb){
     document.getElementById("vn-tmdb").value=tmdb;
     document.getElementById("va-tmdb").value=tmdb;
+    document.getElementById("vr-tmdb").value=tmdb;
     if(p.get("type")==="tv"){
       document.getElementById("vn-mtype").value="tv";
       document.getElementById("vn-ep").style.display="flex";
       if(p.get("season"))  document.getElementById("vn-season").value=p.get("season");
       if(p.get("episode")) document.getElementById("vn-episode").value=p.get("episode");
+      vrSetType("tv");
+      if(p.get("season"))  document.getElementById("vr-season").value=p.get("season");
+      if(p.get("episode")) document.getElementById("vr-episode").value=p.get("episode");
     }
     fetchVidnest();
   }
